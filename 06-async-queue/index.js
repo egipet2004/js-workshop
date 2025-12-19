@@ -20,6 +20,12 @@ class AsyncQueue {
     // this.running = 0;       // Currently running count
     // this.paused = false;    // Paused state
     // this.emptyCallbacks = []; // Callbacks for empty event
+    this.concurrency = options.concurrency || 1;
+    this.autoStart = options.autoStart !== false;
+    this.queue = [];        // Pending tasks
+    this.running = 0;       // Currently running count
+    this.paused = false;    // Paused state
+    this.emptyCallbacks = []; // Callbacks for empty event
   }
 
   /**
@@ -31,18 +37,24 @@ class AsyncQueue {
    */
   add(task, options = {}) {
     // TODO: Implement add
-
     // Step 1: Create a new Promise and store its resolve/reject
-
     // Step 2: Create task entry with: task, priority, resolve, reject
-
     // Step 3: Add to queue (consider priority ordering)
-
     // Step 4: Try to process if autoStart and not paused
-
     // Step 5: Return the promise
-
-    return Promise.resolve(); // Replace with your implementation
+    return new Promise((resolve,reject)=>{
+      const taskEntry = {
+        task,                     
+        priority: options.priority || 0, 
+        resolve,                  
+        reject                   
+      };
+      this.queue.push(taskEntry);
+      this.queue.sort((a, b) => b.priority - a.priority);
+      if (this.autoStart && !this.paused) {
+        this._process();
+      }
+    });
   }
 
   /**
@@ -51,6 +63,11 @@ class AsyncQueue {
   start() {
     // TODO: Implement start
     // Set paused to false and trigger processing
+    // Установить paused = false и запустить обработку
+    this.paused = false;
+    if (this.queue.length > 0) {
+      this._process();
+    }
   }
 
   /**
@@ -59,6 +76,7 @@ class AsyncQueue {
   pause() {
     // TODO: Implement pause
     // Set paused to true
+    this.paused = true;
   }
 
   /**
@@ -68,6 +86,8 @@ class AsyncQueue {
     // TODO: Implement clear
     // Empty the queue array
     // Optionally: reject pending promises with an error
+    
+    this.queue = [];
   }
 
   /**
@@ -77,6 +97,10 @@ class AsyncQueue {
   onEmpty(callback) {
     // TODO: Implement onEmpty
     // Store callback to be called when size becomes 0 and nothing running
+    this.emptyCallbacks.push(callback);
+    if (this.size === 0 && this.pending === 0) {
+      this._checkEmpty();
+    }
   }
 
   /**
@@ -84,8 +108,8 @@ class AsyncQueue {
    * @returns {number}
    */
   get size() {
-    // TODO: Return queue length
-    throw new Error("Not implemented");
+    // TODO: Return queue lengthЫ
+    return this.queue.length;
   }
 
   /**
@@ -94,7 +118,7 @@ class AsyncQueue {
    */
   get pending() {
     // TODO: Return running count
-    throw new Error("Not implemented");
+    return this.running;
   }
 
   /**
@@ -103,7 +127,7 @@ class AsyncQueue {
    */
   get isPaused() {
     // TODO: Return paused state
-    throw new Error("Not implemented");
+    return this.paused;
   }
 
   /**
@@ -122,6 +146,22 @@ class AsyncQueue {
     // - On success: resolve the task's promise
     // - On error: reject the task's promise
     // - Always: decrement running, call _process again, check if empty
+    while (!this.paused && this.running < this.concurrency && this.queue.length > 0) {
+      const taskEntry = this.queue.shift();
+      this.running++;
+      Promise.resolve(taskEntry.task())
+        .then(result => {
+          taskEntry.resolve(result);
+        })
+        .catch(error => {
+          taskEntry.reject(error);
+        })
+        .finally(() => {
+          this.running--;
+          this._process(); 
+          this._checkEmpty();
+        });
+    }
   }
 
   /**
@@ -130,6 +170,17 @@ class AsyncQueue {
    */
   _checkEmpty() {
     // TODO: If queue is empty and nothing running, call empty callbacks
+    if (this.size === 0 && this.pending === 0 && this.emptyCallbacks.length > 0) {
+        const callbacks = [...this.emptyCallbacks];
+        this.emptyCallbacks = [];
+        callbacks.forEach(callback => {
+          try {
+            callback();
+          } catch (error) {
+            console.error('Error in empty callback:', error);
+          }
+        });
+      }
   }
 }
 
