@@ -11,7 +11,7 @@ class Singleton {
   // TODO: Implement Singleton
 
   // Step 1: Create a static property to hold the instance
-  // static instance = null;
+  static instance = null;
 
   // Step 2: Create a getInstance static method
   // - Check if instance exists
@@ -19,20 +19,22 @@ class Singleton {
   // - Return the instance
 
   static getInstance() {
-    // TODO: Implement getInstance
-    throw new Error("Not implemented");
+    if(!Singleton.instance){
+      Singleton.instance = new Singleton();
+    }
+    return Singleton.instance;
   }
 
   // Step 3: Optionally prevent direct instantiation
-  // constructor() {
-  //   if (Singleton.instance) {
-  //     throw new Error('Use Singleton.getInstance()');
-  //   }
-  // }
+   constructor() {
+     if (Singleton.instance) {
+       throw new Error('Use Singleton.getInstance()');
+     }
+   }
 
   // Step 4: Add a reset method for testing
   static resetInstance() {
-    // TODO: Reset the instance to null
+    Singleton.instance = null;
   }
 }
 
@@ -48,7 +50,7 @@ function createSingleton(Class) {
   // TODO: Implement createSingleton
 
   // Step 1: Create a closure variable to hold the instance
-  // let instance = null;
+  let instance = null;
 
   // Step 2: Return an object with getInstance method
   // getInstance should:
@@ -60,11 +62,13 @@ function createSingleton(Class) {
 
   return {
     getInstance: (...args) => {
-      // TODO: Implement
-      throw new Error("Not implemented");
+      if (!instance) {
+        instance = new Class(...args);
+      }
+      return instance;
     },
     resetInstance: () => {
-      // TODO: Implement
+      instance = null;
     },
   };
 }
