@@ -4,7 +4,7 @@
 class Container {
   constructor() {
     // TODO: Initialize registry
-    // this.registry = new Map();
+    this.registry = new Map();
   }
 
   /**
@@ -19,6 +19,29 @@ class Container {
     // TODO: Implement register
     // Store in registry:
     // { type: 'class', Class, dependencies, singleton, instance: null }
+      if (typeof name !== 'string' || !name.trim()) {
+        throw new Error('Service name must be a non-empty string');
+      }
+      if (typeof Class !== 'function') {
+        throw new Error('Class must be a constructor function');
+      }
+      if (!Array.isArray(dependencies)) {
+        throw new Error('Dependencies must be an array');
+      }
+      for (const dep of dependencies) {
+        if (typeof dep !== 'string' || !dep.trim()) {
+          throw new Error('All dependencies must be non-empty strings');
+        }
+      }
+      const { singleton = false } = options;
+      this.registry.set(name, {
+        type: 'class',
+        Class,
+        dependencies,
+        singleton: Boolean(singleton),
+        instance: null
+      });
+      return this;
   }
 
   /**
@@ -30,6 +53,20 @@ class Container {
     // TODO: Implement registerInstance
     // Store in registry:
     // { type: 'instance', instance }
+    if (typeof name !== 'string' || !name.trim()) {
+      throw new Error('Service name must be a non-empty string');
+    }
+    if (instance === undefined) {
+      throw new Error('Instance cannot be undefined');
+    }
+    if (this.registry.has(name)) {
+      throw new Error(`Service '${name}' is already registered`);
+    }
+    this.registry.set(name, {
+      type: 'instance',
+      instance
+    });
+    return this; 
   }
 
   /**
@@ -43,6 +80,32 @@ class Container {
     // TODO: Implement registerFactory
     // Store in registry:
     // { type: 'factory', factory, dependencies, singleton, instance: null }
+    if (typeof name !== 'string' || !name.trim()) {
+      throw new Error('Service name must be a non-empty string');
+    }
+    if (typeof factory !== 'function') {
+      throw new Error('Factory must be a function');
+    }
+    if (!Array.isArray(dependencies)) {
+      throw new Error('Dependencies must be an array');
+    }
+    for (const dep of dependencies) {
+      if (typeof dep !== 'string' || !dep.trim()) {
+        throw new Error('All dependencies must be non-empty strings');
+      }
+    }
+    const { singleton = false } = options;
+    if (this.registry.has(name)) {
+      throw new Error(`Service '${name}' is already registered`);
+    }
+    this.registry.set(name, {
+      type: 'factory',      
+      factory,           
+      dependencies,        
+      singleton: Boolean(singleton), 
+      instance: null       
+    });
+    return this;
   }
 
   /**
@@ -56,17 +119,12 @@ class Container {
 
     // Step 1: Check if service is registered
     // Throw error if not found
-
     // Step 2: Check for circular dependencies
     // If name is already in resolutionStack, throw error
-
     // Step 3: Get registration from registry
-
     // Step 4: Handle different types:
-
     // For 'instance':
     //   - Return the stored instance
-
     // For 'class' or 'factory':
     //   - If singleton and instance exists, return instance
     //   - Add name to resolutionStack
@@ -75,9 +133,42 @@ class Container {
     //   - Remove name from resolutionStack
     //   - If singleton, cache instance
     //   - Return instance
-
     // Broken: returns undefined (causes test assertions to fail)
-    return undefined;
+    if (!this.registry.has(name)) {
+      throw new Error(`Service '${name}' is not registered`);
+    }
+    if (resolutionStack.has(name)) {
+      const cycle = Array.from(resolutionStack).concat(name).join(' -> ');
+      throw new Error(`Circular dependency detected: ${cycle}`);
+    }
+    const registration = this.registry.get(name);
+    if (registration.type === 'instance') {
+      return registration.instance;
+    }
+    if (registration.type === 'class' || registration.type === 'factory') {
+      if (registration.singleton && registration.instance) {
+        return registration.instance;
+      }
+      resolutionStack.add(name);
+      try {
+        const dependencies = registration.dependencies.map(depName => 
+          this.resolve(depName, resolutionStack)
+        );
+        let instance;
+        if (registration.type === 'class') {
+          instance = new registration.Class(...dependencies);
+        } else { 
+          instance = registration.factory(...dependencies);
+        }
+        if (registration.singleton) {
+          registration.instance = instance;
+        }
+        return instance;
+      } finally {
+        resolutionStack.delete(name);
+      }
+    }
+    throw new Error(`Unknown registration type: ${registration.type}`);
   }
 
   /**
@@ -87,7 +178,7 @@ class Container {
    */
   has(name) {
     // TODO: Implement has
-    throw new Error("Not implemented");
+    return this.registry.has(name);
   }
 
   /**
@@ -97,7 +188,9 @@ class Container {
    */
   unregister(name) {
     // TODO: Implement unregister
-    throw new Error("Not implemented");
+    const wasRegistered = this.registry.has(name);
+    this.registry.delete(name);
+    return wasRegistered;
   }
 
   /**
@@ -105,7 +198,7 @@ class Container {
    */
   clear() {
     // TODO: Implement clear
-    throw new Error("Not implemented");
+    this.registry.clear();
   }
 
   /**
@@ -114,7 +207,7 @@ class Container {
    */
   getRegistrations() {
     // TODO: Implement getRegistrations
-    throw new Error("Not implemented");
+    return Array.from(this.registry.keys());
   }
 }
 
@@ -126,13 +219,37 @@ class Container {
  */
 function createChildContainer(parent) {
   // TODO: Implement createChildContainer
-
   // Create a new container that:
   // - First checks its own registry
   // - Falls back to parent for unregistered services
-
   const child = new Container();
-  // Override resolve to check parent...
+  child.parent = parent;
+  const originalResolve = child.resolve.bind(child);
+  child.resolve = function(name, resolutionStack = new Set()) {
+    if (this.registry.has(name)) {
+      return originalResolve(name, resolutionStack);
+    }
+    if (this.parent) {
+      return this.parent.resolve(name, resolutionStack);
+    }
+    throw new Error(`Service '${name}' is not registered`);
+  };
+  const originalHas = child.has.bind(child);
+  child.has = function(name) {
+    if (originalHas(name)) {
+      return true;
+    }
+    if (this.parent) {
+      return this.parent.has(name);
+    }
+    return false;
+  };
+  const originalGetRegistrations = child.getRegistrations.bind(child);
+  child.getRegistrations = function() {
+    const localNames = originalGetRegistrations();
+    const parentNames = this.parent ? this.parent.getRegistrations() : [];
+    return Array.from(new Set([...localNames, ...parentNames]));
+  };
   return child;
 }
 
