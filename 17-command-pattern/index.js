@@ -10,8 +10,8 @@
 class CommandManager {
   constructor() {
     // TODO: Initialize stacks
-    // this.undoStack = [];
-    // this.redoStack = [];
+    this.undoStack = [];
+    this.redoStack = [];
   }
 
   /**
@@ -23,6 +23,9 @@ class CommandManager {
     // Step 1: Call command.execute()
     // Step 2: Push to undo stack
     // Step 3: Clear redo stack (new action invalidates redo history)
+    command.execute();
+    this.undoStack.push(command);
+    this.redoStack = [];
   }
 
   /**
@@ -31,18 +34,18 @@ class CommandManager {
    */
   undo() {
     // TODO: Implement undo
-
     // Step 1: Check if undo stack is empty
-
     // Step 2: Pop command from undo stack
-
     // Step 3: Call command.undo()
-
     // Step 4: Push to redo stack
-
     // Step 5: Return true
-
-    throw new Error("Not implemented");
+    if (this.undoStack.length === 0) {
+      return false;
+    }
+    const command = this.undoStack.pop();
+    command.undo();
+    this.redoStack.push(command);
+    return true;
   }
 
   /**
@@ -51,18 +54,18 @@ class CommandManager {
    */
   redo() {
     // TODO: Implement redo
-
     // Step 1: Check if redo stack is empty
-
     // Step 2: Pop command from redo stack
-
     // Step 3: Call command.execute()
-
     // Step 4: Push to undo stack
-
     // Step 5: Return true
-
-    throw new Error("Not implemented");
+    if (this.redoStack.length === 0) {
+      return false;
+    }
+    const command = this.redoStack.pop();
+    command.execute();
+    this.undoStack.push(command);
+    return true;
   }
 
   /**
@@ -71,7 +74,7 @@ class CommandManager {
    */
   canUndo() {
     // TODO: Return whether undo stack has items
-    throw new Error("Not implemented");
+    return this.undoStack.length > 0;
   }
 
   /**
@@ -80,7 +83,7 @@ class CommandManager {
    */
   canRedo() {
     // TODO: Return whether redo stack has items
-    throw new Error("Not implemented");
+    return this.redoStack.length > 0;
   }
 
   /**
@@ -89,7 +92,7 @@ class CommandManager {
    */
   get history() {
     // TODO: Return copy of undo stack
-    throw new Error("Not implemented");
+    return [...this.undoStack];
   }
 
   /**
@@ -97,6 +100,8 @@ class CommandManager {
    */
   clear() {
     // TODO: Clear both stacks
+    this.undoStack = [];
+    this.redoStack = [];
   }
 }
 
@@ -106,17 +111,19 @@ class CommandManager {
 class AddCommand {
   constructor(calculator, value) {
     // TODO: Store calculator and value
-    // this.calculator = calculator;
-    // this.value = value;
+    this.calculator = calculator;
+    this.value = value;
     this.description = `Add ${value}`;
   }
 
   execute() {
     // TODO: Add value to calculator.value
+    this.calculator.value += this.value;
   }
 
   undo() {
     // TODO: Subtract value from calculator.value
+    this.calculator.value -= this.value;
   }
 }
 
@@ -126,15 +133,19 @@ class AddCommand {
 class SubtractCommand {
   constructor(calculator, value) {
     // TODO: Store calculator and value
+    this.calculator = calculator;
+    this.value = value;
     this.description = `Subtract ${value}`;
   }
 
   execute() {
     // TODO: Subtract value from calculator.value
+    this.calculator.value -= this.value;
   }
 
   undo() {
     // TODO: Add value to calculator.value
+    this.calculator.value += this.value;
   }
 }
 
@@ -144,16 +155,24 @@ class SubtractCommand {
 class MultiplyCommand {
   constructor(calculator, value) {
     // TODO: Store calculator, value, and previous value for undo
+    this.calculator = calculator;
+    this.value = value;
+    this.previousValue = null;
     this.description = `Multiply by ${value}`;
   }
 
   execute() {
     // TODO: Multiply calculator.value by value
     // Save previous value for undo
+    this.previousValue = this.calculator.value;
+    this.calculator.value *= this.value;
   }
 
   undo() {
     // TODO: Restore previous value
+    if (this.previousValue !== null) {
+      this.calculator.value = this.previousValue;
+    }
   }
 }
 
@@ -164,15 +183,23 @@ class DivideCommand {
   constructor(calculator, value) {
     // TODO: Store calculator, value, and previous value for undo
     this.description = `Divide by ${value}`;
+    this.calculator = calculator;
+    this.value = value;
+    this.previousValue = null;
   }
 
   execute() {
     // TODO: Divide calculator.value by value
     // Save previous value for undo
+    this.previousValue = this.calculator.value;
+    this.calculator.value /= this.value;
   }
 
   undo() {
     // TODO: Restore previous value
+    if (this.previousValue !== null) {
+      this.calculator.value = this.previousValue;
+    }
   }
 }
 
@@ -184,7 +211,7 @@ class DivideCommand {
 class MacroCommand {
   constructor(commands = []) {
     // TODO: Store commands array
-    // this.commands = commands;
+    this.commands = commands;
     this.description = "Macro";
   }
 
@@ -194,14 +221,21 @@ class MacroCommand {
    */
   add(command) {
     // TODO: Add command to array
+    this.commands.push(command);
   }
 
   execute() {
     // TODO: Execute all commands in order
+    for (const command of this.commands) {
+      command.execute();
+    }
   }
 
   undo() {
     // TODO: Undo all commands in reverse order
+    for (let i = this.commands.length - 1; i >= 0; i--) {
+      this.commands[i].undo();
+    }
   }
 }
 
@@ -214,14 +248,22 @@ class SetValueCommand {
   constructor(calculator, value) {
     // TODO: Store calculator, new value, and previous value
     this.description = `Set to ${value}`;
+    this.calculator = calculator;
+    this.newValue = value;
+    this.previousValue = null;
   }
 
   execute() {
     // TODO: Save previous, set new value
+    this.previousValue = this.calculator.value;
+    this.calculator.value = this.newValue;
   }
 
   undo() {
     // TODO: Restore previous value
+    if (this.previousValue !== null) {
+      this.calculator.value = this.previousValue;
+    }
   }
 }
 
