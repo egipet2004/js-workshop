@@ -14,17 +14,18 @@
 class SortContext {
   constructor(strategy) {
     // TODO: Store strategy
-    // this.strategy = strategy;
+    this.strategy = strategy;
   }
 
   setStrategy(strategy) {
     // TODO: Update strategy
+    this.strategy = strategy;
   }
 
   sort(array) {
     // TODO: Delegate to strategy
     // Return sorted copy, don't mutate original
-    throw new Error("Not implemented");
+    return this.strategy.sort([...array]);
   }
 }
 
@@ -35,8 +36,18 @@ class BubbleSort {
   sort(array) {
     // TODO: Implement bubble sort
     // Return new sorted array
-
-    return ["NOT_IMPLEMENTED"]; // Broken: Replace with implementation
+    const arr = [...array];
+    const n = arr.length;
+    for (let i = 0; i < n - 1; i++) {
+      for (let j = 0; j < n - i - 1; j++) {
+        if (arr[j] > arr[j + 1]) {
+          const temp = arr[j];
+          arr[j] = arr[j + 1];
+          arr[j + 1] = temp;
+        }
+      }
+    }
+    return arr;
   }
 }
 
@@ -47,8 +58,24 @@ class QuickSort {
   sort(array) {
     // TODO: Implement quick sort
     // Return new sorted array
-
-    return []; // Broken: Replace with implementation
+    const arr = [...array];
+    if (arr.length <= 1) {
+      return arr;
+    }
+    const pivot = arr[Math.floor(arr.length / 2)];
+    const left = [];
+    const right = [];
+    const equal = [];
+    for (const item of arr) {
+      if (item < pivot) {
+        left.push(item);
+      } else if (item > pivot) {
+        right.push(item);
+      } else {
+        equal.push(item);
+      }
+    } 
+    return [...this.sort(left), ...equal, ...this.sort(right)];
   }
 }
 
@@ -59,8 +86,32 @@ class MergeSort {
   sort(array) {
     // TODO: Implement merge sort
     // Return new sorted array
-
-    return []; // Broken: Replace with implementation
+    const arr = [...array];
+    return this.mergeSort(arr);
+  }
+  mergeSort(arr) {
+    if (arr.length <= 1) {
+      return arr;
+    }
+    const mid = Math.floor(arr.length / 2);
+    const left = this.mergeSort(arr.slice(0, mid));
+    const right = this.mergeSort(arr.slice(mid));
+    return this.merge(left, right);
+  }
+  merge(left, right) {
+    const result = [];
+    let leftIndex = 0;
+    let rightIndex = 0;
+    while (leftIndex < left.length && rightIndex < right.length) {
+      if (left[leftIndex] < right[rightIndex]) {
+        result.push(left[leftIndex]);
+        leftIndex++;
+      } else {
+        result.push(right[rightIndex]);
+        rightIndex++;
+      }
+    }
+    return result.concat(left.slice(leftIndex)).concat(right.slice(rightIndex));
   }
 }
 
@@ -76,15 +127,17 @@ class MergeSort {
 class PricingContext {
   constructor(strategy) {
     // TODO: Store strategy
+    this.strategy = strategy;
   }
 
   setStrategy(strategy) {
     // TODO: Update strategy
+    this.strategy = strategy;
   }
 
   calculateTotal(items) {
     // TODO: Delegate to strategy
-    throw new Error("Not implemented");
+    return this.strategy.calculate(items);
   }
 }
 
@@ -94,7 +147,7 @@ class PricingContext {
 class RegularPricing {
   calculate(items) {
     // TODO: Sum all item prices
-    throw new Error("Not implemented");
+    return items.reduce((total, item) => total + item.price, 0);
   }
 }
 
@@ -104,13 +157,13 @@ class RegularPricing {
 class PercentageDiscount {
   constructor(percentage) {
     // TODO: Store percentage (0-100)
-    // this.percentage = percentage;
+    this.percentage = percentage;
   }
 
   calculate(items) {
     // TODO: Apply percentage discount
-    // total * (1 - percentage/100)
-    throw new Error("Not implemented");
+    const subtotal = items.reduce((total, item) => total + item.price, 0);
+    return subtotal * (1 - this.percentage / 100);
   }
 }
 
@@ -120,13 +173,14 @@ class PercentageDiscount {
 class FixedDiscount {
   constructor(amount) {
     // TODO: Store fixed discount amount
-    // this.amount = amount;
+    this.amount = amount;
   }
 
   calculate(items) {
     // TODO: Subtract fixed amount from total
     // Don't go below 0
-    throw new Error("Not implemented");
+    const subtotal = items.reduce((total, item) => total + item.price, 0);
+    return Math.max(0, subtotal - this.amount);
   }
 }
 
@@ -137,7 +191,14 @@ class BuyOneGetOneFree {
   calculate(items) {
     // TODO: Every second item is free
     // Sort by price desc, charge only every other item
-    throw new Error("Not implemented");
+    const sorted = [...items].sort((a, b) => b.price - a.price);
+    let total = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      if (i % 2 === 0) {
+        total += sorted[i].price;
+      }
+    }
+    return total;
   }
 }
 
@@ -148,16 +209,20 @@ class BuyOneGetOneFree {
  */
 class TieredDiscount {
   constructor(tiers) {
-    // TODO: Store tiers
-    // tiers = [{ threshold: 100, discount: 10 }, { threshold: 200, discount: 20 }]
-    // this.tiers = tiers;
+     this.tiers = tiers;
   }
-
   calculate(items) {
-    // TODO: Apply tier discount based on subtotal
-    throw new Error("Not implemented");
+    const subtotal = items.reduce((total, item) => total + item.price, 0);
+    let maxDiscount = 0;
+    for (const tier of this.tiers) {
+      if (subtotal >= tier.threshold && tier.discount > maxDiscount) {
+        maxDiscount = tier.discount;
+      }
+    }
+    return subtotal * (1 - maxDiscount / 100);
   }
 }
+
 
 // ============================================
 // VALIDATION STRATEGIES
@@ -169,15 +234,17 @@ class TieredDiscount {
 class ValidationContext {
   constructor(strategy) {
     // TODO: Store strategy
+    this.strategy = strategy;
   }
 
   setStrategy(strategy) {
     // TODO: Update strategy
+    this.strategy = strategy;
   }
 
   validate(data) {
     // TODO: Delegate to strategy
-    throw new Error("Not implemented");
+    return this.strategy.validate(data);
   }
 }
 
@@ -194,7 +261,20 @@ class StrictValidation {
     // TODO: Validate that name, email, and age are all present and valid
     // Return { valid: boolean, errors: string[] }
     // Example: { valid: false, errors: ["Name is required", "Email is required"] }
-    throw new Error("Not implemented");
+    const errors = [];
+    if (typeof data.name !== 'string' || data.name.trim() === '') {
+      errors.push('Name is required');
+    }
+    if (typeof data.email !== 'string' || data.email.trim() === '') {
+      errors.push('Email is required');
+    }
+    if (typeof data.age !== 'number') {
+      errors.push('Age is required and must be a number');
+    }
+    return {
+      valid: errors.length === 0,
+      errors: errors
+    }
   }
 }
 
@@ -208,7 +288,7 @@ class LenientValidation {
   validate(data) {
     // TODO: Always return valid: true, errors: []
     // This strategy has no validation rules
-    return { valid: false, errors: ["Not implemented"] }; // Broken: Replace with implementation
+    return { valid: true, errors: [] }; 
   }
 }
 
@@ -224,21 +304,22 @@ class LenientValidation {
 class StrategyRegistry {
   constructor() {
     // TODO: Initialize registry map
-    // this.strategies = new Map();
+    this.strategies = new Map();
   }
 
   register(name, strategy) {
     // TODO: Store strategy by name
+    this.strategies.set(name, strategy);
   }
 
   get(name) {
     // TODO: Return strategy by name
-    throw new Error("Not implemented");
+    return this.strategies.get(name) || null;
   }
 
   has(name) {
     // TODO: Check if strategy exists
-    throw new Error("Not implemented");
+    return this.strategies.has(name);
   }
 }
 
